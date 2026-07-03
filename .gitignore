@@ -1,0 +1,43 @@
+# Gradle
+.gradle
+build/
+dist/
+*.jar
+*.jar.original
+*.war
+*.ear
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Maven (legacy, but just in case)
+target/
+.m2
+
+# Java
+*.class
+*.log
+.cache
+
+# Application runtime
+*.pid
+.env
+

@@ -1,0 +1,13 @@
+// Root settings for multi-project Gradle build
+rootProject.name = 'oms-services'
+
+// include all service modules so the IDE's Gradle tool window shows their tasks
+include 'api-gateway'
+include 'auth-service'
+include 'discovery-server'
+include 'order-service'
+include 'payment-service'
+
+// If any module uses a different directory layout, you can set projectDir explicitly, e.g.:
+// project(':api-gateway').projectDir = file('api-gateway')
+
