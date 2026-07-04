@@ -2,13 +2,21 @@
 pipeline {
   agent any
   options {
+    skipDefaultCheckout(true)
     timestamps()
     ansiColor('xterm')
     buildDiscarder(logRotator(numToKeepStr: '30'))
     timeout(time: 30, unit: 'MINUTES')
   }
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') {
+      steps {
+        cleanWs()
+        checkout scm
+        sh 'git rev-parse HEAD'
+        sh 'git branch --show-current || true'
+      }
+    }
     stage('Build api-gateway') {
       steps {
         script {
@@ -28,7 +36,10 @@ pipeline {
     }
   }
   post {
-    always { echo 'api-gateway pipeline finished' }
+    always {
+      echo 'api-gateway pipeline finished'
+      cleanWs()
+    }
     failure { echo 'api-gateway build failed' }
   }
 }

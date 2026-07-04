@@ -2,6 +2,7 @@
 pipeline {
   agent any
   options {
+    skipDefaultCheckout(true)
     timestamps()
     ansiColor('xterm')
     buildDiscarder(logRotator(numToKeepStr: '30'))
@@ -9,7 +10,12 @@ pipeline {
   }
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        cleanWs()
+        checkout scm
+        sh 'git rev-parse HEAD'
+        sh 'git branch --show-current || true'
+      }
     }
     stage('Build discovery-server') {
       steps {
@@ -31,7 +37,10 @@ pipeline {
     }
   }
   post {
-    always { echo 'discovery-server pipeline finished' }
+    always {
+      echo 'discovery-server pipeline finished'
+      cleanWs()
+    }
     failure { echo 'discovery-server build failed' }
   }
 }
