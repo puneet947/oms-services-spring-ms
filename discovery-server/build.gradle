@@ -21,5 +21,13 @@ dependencyManagement {
 
 dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+    // Testing support
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Ensure JUnit Jupiter is available and configure the Gradle test task to use it
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+test {
+    useJUnitPlatform()
 }
 
