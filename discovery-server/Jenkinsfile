@@ -1,47 +1,126 @@
-// Jenkinsfile: builds the discovery-server service (Gradle)
+// Enterprise CI/CD Pipeline for discovery-server microservice
+// Follows production-grade Jenkins best practices for Spring Boot services
+
 pipeline {
   agent any
+
+  environment {
+    SERVICE_NAME = 'discovery-server'
+    GRADLE_CMD = './gradlew'
+    JAR_PATTERN = 'build/libs/*.jar'
+    TEST_REPORTS = 'build/test-results/test/*.xml'
+    GRADLE_OPTS = '-Dorg.gradle.daemon=false'
+  }
+
   options {
     skipDefaultCheckout(true)
     timestamps()
     ansiColor('xterm')
     buildDiscarder(logRotator(numToKeepStr: '30'))
     timeout(time: 30, unit: 'MINUTES')
+    disableConcurrentBuilds()
   }
+
   stages {
+    // Checkout: Prepare the workspace and fetch source code
     stage('Checkout') {
       steps {
-        cleanWs()
-        checkout scm
-        sh 'git rev-parse HEAD'
-        sh 'git branch --show-current || true'
+        script {
+          echo "=========================================="
+          echo "Stage: Checkout"
+          echo "=========================================="
+          cleanWs()
+          checkout scm
+
+          // Log Git information for audit and debugging
+          env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+          env.GIT_BRANCH = sh(script: 'git branch --show-current || echo "detached"', returnStdout: true).trim()
+
+          echo "Service: ${env.SERVICE_NAME}"
+          echo "Git Commit: ${env.GIT_COMMIT}"
+          echo "Git Branch: ${env.GIT_BRANCH}"
+        }
       }
     }
-    stage('Build discovery-server') {
+
+    // Build: Compile, test, and package the microservice
+    stage('Build') {
       steps {
         script {
-          if (!fileExists('.')) { error 'Workspace missing' }
-          if (!fileExists('discovery-server')) {
-            echo 'discovery-server directory not found; skipping build.'
-            return
+          echo "=========================================="
+          echo "Stage: Build"
+          echo "=========================================="
+          dir(env.SERVICE_NAME) {
+            // Validate Gradle wrapper exists
+            if (!fileExists('gradlew')) {
+              error "Gradle wrapper (gradlew) not found in ${env.SERVICE_NAME}. CI/CD requires embedded Gradle."
+            }
+
+             // Log environment details
+             echo "Java Version:"
+             sh 'java -version'
+
+             echo "Gradle Version:"
+             sh "${env.GRADLE_CMD} --version"
+
+             // Prepare Gradle wrapper and execute build
+             sh "chmod +x gradlew"
+             sh "${env.GRADLE_CMD} clean build --no-daemon --stacktrace"
           }
-          dir('discovery-server') {
-            def gradleCmd = fileExists('gradlew') ? './gradlew' : 'gradle'
-            echo "Running: ${gradleCmd} clean build --no-daemon"
-            sh "${gradleCmd} clean build --no-daemon"
-            archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
-            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
+        }
+      }
+    }
+
+    // Publish Test Results: Parse and publish JUnit XML reports
+    stage('Publish Test Results') {
+      steps {
+        script {
+          echo "=========================================="
+          echo "Stage: Publish Test Results"
+          echo "=========================================="
+          dir(env.SERVICE_NAME) {
+            junit allowEmptyResults: true, testResults: env.TEST_REPORTS
+          }
+        }
+      }
+    }
+
+    // Archive Artifacts: Store build artifacts for deployment
+    stage('Archive Artifacts') {
+      steps {
+        script {
+          echo "=========================================="
+          echo "Stage: Archive Artifacts"
+          echo "=========================================="
+          dir(env.SERVICE_NAME) {
+            archiveArtifacts artifacts: env.JAR_PATTERN, fingerprint: true, allowEmptyArchive: false
           }
         }
       }
     }
   }
+
   post {
+    success {
+      echo "=========================================="
+      echo "Pipeline Status: SUCCESS"
+      echo "Service: ${env.SERVICE_NAME}"
+      echo "Commit: ${env.GIT_COMMIT}"
+      echo "=========================================="
+    }
+
+    failure {
+      echo "=========================================="
+      echo "Pipeline Status: FAILURE"
+      echo "Service: ${env.SERVICE_NAME}"
+      echo "Commit: ${env.GIT_COMMIT}"
+      echo "=========================================="
+    }
+
     always {
-      echo 'discovery-server pipeline finished'
+      echo "Pipeline execution completed for ${env.SERVICE_NAME}"
       cleanWs()
     }
-    failure { echo 'discovery-server build failed' }
   }
 }
 
