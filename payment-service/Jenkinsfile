@@ -1,0 +1,35 @@
+// Jenkinsfile: builds the payment-service service (Gradle)
+pipeline {
+  agent any
+  options {
+    timestamps()
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+    stage('Build payment-service') {
+      steps {
+        script {
+          if (!fileExists('payment-service')) {
+            echo 'payment-service directory not found; skipping build.'
+            return
+          }
+          dir('payment-service') {
+            def gradleCmd = fileExists('gradlew') ? './gradlew' : 'gradle'
+            echo "Running: ${gradleCmd} clean build --no-daemon"
+            sh "${gradleCmd} clean build --no-daemon"
+            archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
+          }
+        }
+      }
+    }
+  }
+  post {
+    always { echo 'payment-service pipeline finished' }
+    failure { echo 'payment-service build failed' }
+  }
+}
+

@@ -1,0 +1,35 @@
+// Jenkinsfile: builds the auth-service service (Gradle)
+pipeline {
+  agent any
+  options {
+    timestamps()
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+    stage('Build auth-service') {
+      steps {
+        script {
+          if (!fileExists('auth-service')) {
+            echo 'auth-service directory not found; skipping build.'
+            return
+          }
+          dir('auth-service') {
+            def gradleCmd = fileExists('gradlew') ? './gradlew' : 'gradle'
+            echo "Running: ${gradleCmd} clean build --no-daemon"
+            sh "${gradleCmd} clean build --no-daemon"
+            archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
+          }
+        }
+      }
+    }
+  }
+  post {
+    always { echo 'auth-service pipeline finished' }
+    failure { echo 'auth-service build failed' }
+  }
+}
+

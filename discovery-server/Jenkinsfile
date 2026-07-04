@@ -1,0 +1,38 @@
+// Jenkinsfile: builds the discovery-server service (Gradle)
+pipeline {
+  agent any
+  options {
+    timestamps()
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+    stage('Build discovery-server') {
+      steps {
+        script {
+          if (!fileExists('.')) { error 'Workspace missing' }
+          if (!fileExists('discovery-server')) {
+            echo 'discovery-server directory not found; skipping build.'
+            return
+          }
+          dir('discovery-server') {
+            def gradleCmd = fileExists('gradlew') ? './gradlew' : 'gradle'
+            echo "Running: ${gradleCmd} clean build --no-daemon"
+            sh "${gradleCmd} clean build --no-daemon"
+            archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
+          }
+        }
+      }
+    }
+  }
+  post {
+    always { echo 'discovery-server pipeline finished' }
+    failure { echo 'discovery-server build failed' }
+  }
+}
+
